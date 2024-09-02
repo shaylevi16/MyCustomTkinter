@@ -1,4 +1,4 @@
-from typing import Union, Tuple, Optional
+from typing import Union, Tuple, Optional, List
 
 from .widgets import CTkLabel
 from .widgets import CTkEntry
@@ -26,10 +26,13 @@ class CTkInputDialog(CTkToplevel):
 
                  title: str = "CTkDialog",
                  font: Optional[Union[tuple, CTkFont]] = None,
-                 text: str = "CTkDialog"):
+                 text: str = "CTkDialog",
+                 
+                 place_holders: List[str] = None,
+                 default_hexts: Optional[List[str]] = None):
 
         super().__init__(fg_color=fg_color)
-
+        
         self._fg_color = ThemeManager.theme["CTkToplevel"]["fg_color"] if fg_color is None else self._check_color_type(fg_color)
         self._text_color = ThemeManager.theme["CTkLabel"]["text_color"] if text_color is None else self._check_color_type(button_hover_color)
         self._button_fg_color = ThemeManager.theme["CTkButton"]["fg_color"] if button_fg_color is None else self._check_color_type(button_fg_color)
@@ -45,6 +48,10 @@ class CTkInputDialog(CTkToplevel):
         self._text = text
         self._font = font
 
+        self._place_holders = place_holders if place_holders else ['']
+        self._defualt_texts = default_hexts
+        self._entries = []
+
         self.title(self._title)
         self.lift()  # lift window on top
         self.attributes("-topmost", True)  # stay on top
@@ -52,6 +59,16 @@ class CTkInputDialog(CTkToplevel):
         self.after(10, self._create_widgets)  # create widgets with slight delay, to avoid white flickering of background
         self.resizable(False, False)
         self.grab_set()  # make other windows not clickable
+        
+        # calculate position x and y coordinates
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        width = 340
+        height = 212
+        x = (screen_width/2) - (width/2)
+        y = (screen_height/2) - (height/2)
+        self.geometry('%dx%d+%d+%d' % (width, height, x, y)) 
+        
 
     def _create_widgets(self):
         self.grid_columnconfigure((0, 1), weight=1)
@@ -66,13 +83,18 @@ class CTkInputDialog(CTkToplevel):
                                font=self._font)
         self._label.grid(row=0, column=0, columnspan=2, padx=20, pady=20, sticky="ew")
 
-        self._entry = CTkEntry(master=self,
-                               width=230,
-                               fg_color=self._entry_fg_color,
-                               border_color=self._entry_border_color,
-                               text_color=self._entry_text_color,
-                               font=self._font)
-        self._entry.grid(row=1, column=0, columnspan=2, padx=20, pady=(0, 20), sticky="ew")
+        for i, p in enumerate(self._place_holders):
+            new_entry = CTkEntry(master=self,
+                                width=230,
+                                fg_color=self._entry_fg_color,
+                                border_color=self._entry_border_color,
+                                text_color=self._entry_text_color,
+                                font=self._font,
+                                placeholder_text=p)
+            new_entry.grid(row=1 + i, column=0, columnspan=2, padx=20, pady=(0, 20), sticky="ew")
+            if self._defualt_texts and self._defualt_texts[i] != '':
+                new_entry.insert(0, self._defualt_texts[i])
+            self._entries.append(new_entry)
 
         self._ok_button = CTkButton(master=self,
                                     width=100,
@@ -83,7 +105,7 @@ class CTkInputDialog(CTkToplevel):
                                     text='Ok',
                                     font=self._font,
                                     command=self._ok_event)
-        self._ok_button.grid(row=2, column=0, columnspan=1, padx=(20, 10), pady=(0, 20), sticky="ew")
+        self._ok_button.grid(row=len(self._place_holders)+1, column=0, columnspan=1, padx=(20, 10), pady=(0, 20), sticky="ew")
 
         self._cancel_button = CTkButton(master=self,
                                         width=100,
@@ -94,13 +116,13 @@ class CTkInputDialog(CTkToplevel):
                                         text='Cancel',
                                         font=self._font,
                                         command=self._cancel_event)
-        self._cancel_button.grid(row=2, column=1, columnspan=1, padx=(10, 20), pady=(0, 20), sticky="ew")
+        self._cancel_button.grid(row=len(self._place_holders)+1, column=1, columnspan=1, padx=(10, 20), pady=(0, 20), sticky="ew")
 
-        self.after(150, lambda: self._entry.focus())  # set focus to entry with slight delay, otherwise it won't work
-        self._entry.bind("<Return>", self._ok_event)
+        # self.after(150, lambda: self._entry1.focus())  # set focus to entry with slight delay, otherwise it won't work
+        self._entries[0].bind("<Return>", self._ok_event)        
 
     def _ok_event(self, event=None):
-        self._user_input = self._entry.get()
+        self._user_input = [e.get() for e in self._entries]
         self.grab_release()
         self.destroy()
 
