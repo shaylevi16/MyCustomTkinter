@@ -28,10 +28,16 @@ class CTkLoginDialog(CTkToplevel):
                  title: str = "CTkDialog",
                  font: Optional[Union[tuple, CTkFont]] = None,
                  text: str = "CTkDialog",
+                 icon_path: str = "",
                  
                  callback: Callable[[str, str], Tuple[bool, Optional[Tuple[str, str, str]]]] = None):
 
         super().__init__(fg_color=fg_color)
+        
+        # Because CTkToplevel currently is bugged on windows
+        # and doesn't check if a user specified icon is set
+        # we need to set the icon again after 200ms
+        self.after(200, lambda: self.wm_iconbitmap(icon_path))
         
         self._place_holder_text = place_holder_text
 
